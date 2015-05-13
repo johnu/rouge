@@ -22,7 +22,7 @@ module Rouge
         rule %r(
           :  # initial :
           @{0,2} # optional ivar, for :@foo and :@@foo
-          [a-z_]\w*[!?]? # the symbol
+          [\p{Ll}_][\p{L}0-9_]*[!?]? # the symbol
         )xi, Str::Symbol
 
         # special symbols
@@ -37,7 +37,7 @@ module Rouge
         # %-sigiled strings
         # %(abc), %[abc], %<abc>, %.abc., %r.abc., etc
         delimiter_map = { '{' => '}', '[' => ']', '(' => ')', '<' => '>' }
-        rule /%([rqswQWxiI])?([^\w\s])/ do |m|
+        rule /%([rqswQWxiI])?([^[\p{L}0-9_]\s])/ do |m|
           open = Regexp.escape(m[2])
           close = Regexp.escape(delimiter_map[m[2]] || m[2])
           interp = /[rQWxI]/ === m[1]
@@ -79,7 +79,7 @@ module Rouge
 
       state :strings do
         mixin :symbols
-        rule /\b[a-z_]\w*?:\s+/, Str::Symbol, :expr_start
+        rule /\b[\p{Ll}_][\p{L}0-9_]*?:\s+/, Str::Symbol, :expr_start
         rule /'(\\\\|\\'|[^'])*'/, Str::Single
         rule /"/, Str::Double, :simple_string
         rule /(?<!\.)`/, Str::Backtick, :simple_backtick
@@ -167,9 +167,9 @@ module Rouge
         rule /[\d]+(?:_\d+)*/, Num::Integer
 
         # names
-        rule /@@[a-z_]\w*/i, Name::Variable::Class
-        rule /@[a-z_]\w*/i, Name::Variable::Instance
-        rule /\$\w+/, Name::Variable::Global
+        rule /@@[\p{Ll}_][\p{L}0-9_]*/i, Name::Variable::Class
+        rule /@[\p{Ll}_][\p{L}0-9_]*/i, Name::Variable::Instance
+        rule /\$[\p{L}0-9_]+/, Name::Variable::Global
         rule %r(\$[!@&`'+~=/\\,;.<>_*\$?:"]), Name::Variable::Global
         rule /\$-[0adFiIlpvw]/, Name::Variable::Global
         rule /::/, Operator
@@ -182,7 +182,7 @@ module Rouge
         rule %r(
           (module)
           (\s+)
-          ([a-zA-Z_][a-zA-Z0-9_]*(::[a-zA-Z_][a-zA-Z0-9_]*)*)
+          ([\p{L}_][\p{L}0-9_]*(::[\p{L}_][\p{L}0-9_]*)*)
         )x do
           groups Keyword, Text, Name::Namespace
         end
@@ -207,19 +207,19 @@ module Rouge
         rule %r(
           [?](\\[MC]-)*     # modifiers
           (\\([\\abefnrstv\#"']|x[a-fA-F0-9]{1,2}|[0-7]{1,3})|\S)
-          (?!\w)
+          (?![\p{L}0-9_])
         )x, Str::Char
 
         mixin :has_heredocs
 
-        rule /[A-Z][a-zA-Z0-9_]*/, Name::Constant, :method_call
-        rule /(\.|::)(\s*)([a-z_]\w*[!?]?|[*%&^`~+-\/\[<>=])/ do
+        rule /\p{Lu}[\p{L}0-9_]*/, Name::Constant, :method_call
+        rule /(\.|::)(\s*)([\p{Ll}_][\p{L}0-9_]*[!?]?|[*%&^`~+-\/\[<>=])/ do
           groups Punctuation, Text, Name::Function
           push :method_call
         end
 
-        rule /[a-zA-Z_]\w*[?!]/, Name, :expr_start
-        rule /[a-zA-Z_]\w*/, Name, :method_call
+        rule /[\p{L}_][\p{L}0-9_]*[?!]/, Name, :expr_start
+        rule /[\p{L}_][\p{L}0-9_]*/, Name, :method_call
         rule /\*\*|<<?|>>?|>=|<=|<=>|=~|={3}|!~|&&?|\|\||\.{1,3}/,
           Operator, :expr_start
         rule /[-+\/*%=<>&!^|~]=?/, Operator, :expr_start
@@ -228,7 +228,7 @@ module Rouge
       end
 
       state :has_heredocs do
-        rule /(?<!\w)(<<-?)(["`']?)([a-zA-Z_]\w*)(\2)/ do |m|
+        rule /(?<![\p{L}0-9_])(<<-?)(["`']?)([\p{L}_][\p{L}0-9_]*)(\2)/ do |m|
           token Operator, m[1]
           token Name::Constant, "#{m[2]}#{m[3]}#{m[4]}"
           @heredoc_queue << [m[1] == '<<-', m[3]]
@@ -279,9 +279,9 @@ module Rouge
         rule /\s+/, Text
         rule /\(/, Punctuation, :defexpr
         rule %r(
-          (?:([a-zA-Z_][\w_]*)(\.))?
+          (?:([\p{L}_][[\p{L}0-9]_]*)(\.))?
           (
-            [a-zA-Z_][\w_]*[!?]? |
+            [\p{L}_][[\p{L}0-9]_]*[!?]? |
             \*\*? | [-+]@? | [/%&\|^`~] | \[\]=? |
             <<? | >>? | <=>? | >= | ===?
           )
@@ -308,7 +308,7 @@ module Rouge
           goto :expr_start
         end
 
-        rule /[A-Z_]\w*/, Name::Class
+        rule /[\p{Lu}_][\p{L}0-9_]*/, Name::Class
 
         rule(//) { pop! }
       end
@@ -334,7 +334,7 @@ module Rouge
 
       state :string_intp do
         rule /[#][{]/, Str::Interpol, :in_interp
-        rule /#(@@?|\$)[a-z_]\w*/i, Str::Interpol
+        rule /#(@@?|\$)[\p{Ll}_][\p{L}0-9_]*/i, Str::Interpol
       end
 
       state :string_intp_escaped do
